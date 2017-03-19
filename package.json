@@ -1,0 +1,39 @@
+{
+  "name": "backup-console-aws",
+  "version": "0.1.0",
+  "description": "TODO",
+  "main": "index.js",
+  "author": "Andre Mekkawi <github@andremekkawi.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/amekkawi/backup-console-aws/issues"
+  },
+  "homepage": "https://github.com/amekkawi/backup-console-aws",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amekkawi/backup-console-aws.git"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "mocha --bail --require ./test/setup.js ./test/index.js"
+  },
+  "keywords": [
+    "cloud",
+    "aws",
+    "backup",
+    "dashboard",
+    "arq"
+  ],
+  "devDependencies": {
+    "eslint": "^3.9.1",
+    "eslint-plugin-jsdoc": "^2.4.0",
+    "expect": "^1.20.2",
+    "mocha": "^3.2.0",
+    "object-inspect": "^1.2.1",
+    "proxyquire": "^1.7.11"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.0.0",
+    "cwlogs-writable": "^0.1.0"
+  }
+}
