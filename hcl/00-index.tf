@@ -116,7 +116,6 @@ data "template_file" "IngestWorkerLambdaFunctionName" {
 data "template_file" "LambdaConfigJSON" {
   template = <<EOF
 {
-  "COMMIT_HASH": ${jsonencode(var.CommitHash)},
   "LOGGER_LEVEL": ${jsonencode(var.LoggerLevel)},
   "RECEIVING_EMAIL_PREFIX": ${jsonencode(var.EmailPrefix)},
   "RECEIVING_EMAIL_DOMAIN": ${jsonencode(var.EmailDomain)},

@@ -15,6 +15,7 @@ resource "aws_lambda_function" "IngestConsumerLambda" {
 
   environment {
     variables {
+      CONFIG_COMMIT_HASH = "${var.CommitHash}",
       CONFIG = "${data.template_file.LambdaConfigJSON.rendered}"
     }
   }
@@ -107,6 +108,7 @@ resource "aws_lambda_function" "IngestWorkerLambda" {
 
   environment {
     variables {
+      CONFIG_COMMIT_HASH = "${var.CommitHash}",
       CONFIG = "${data.template_file.LambdaConfigJSON.rendered}"
     }
   }
@@ -233,6 +235,7 @@ resource "aws_lambda_function" "IngestMetricStreamLambda" {
 
   environment {
     variables {
+      CONFIG_COMMIT_HASH = "${var.CommitHash}",
       CONFIG = "${data.template_file.LambdaConfigJSON.rendered}"
     }
   }

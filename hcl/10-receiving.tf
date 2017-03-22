@@ -23,6 +23,7 @@ resource "aws_lambda_function" "VerifyEmailLambda" {
 
   environment {
     variables {
+      CONFIG_COMMIT_HASH = "${var.CommitHash}",
       CONFIG = "${data.template_file.LambdaConfigJSON.rendered}"
     }
   }
@@ -203,6 +204,7 @@ resource "aws_lambda_function" "HTTPPostReceivingLambda" {
 
   environment {
     variables {
+      CONFIG_COMMIT_HASH = "${var.CommitHash}",
       CONFIG = "${data.template_file.LambdaConfigJSON.rendered}"
     }
   }
