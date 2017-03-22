@@ -3,7 +3,7 @@
 SCRIPTDIR="$(cd "$(dirname "$0")" 2> /dev/null && pwd)"
 
 ACTION="$1"
-! echo "$ACTION" | grep -qE '^(plan|apply|destroy)$' && echo "First argument should be plan, apply, or destroy" 1>&2 && exit 1
+! echo "$ACTION" | grep -qE '^(plan|apply|destroy|output)$' && echo "First argument should be plan, apply, or destroy" 1>&2 && exit 1
 
 PLAN_OR_DIR="$SCRIPTDIR"
 IS_PLAN=0
@@ -47,7 +47,7 @@ if [ -n "$2" ]; then
 fi
 
 # Create lambda zip, unless using "apply" with a plan file
-if [ "$ACTION" != "apply" -o "$IS_PLAN" -eq 0 ]; then
+if [ "$ACTION" == "plan" -o "$ACTION" == "apply" -a "$IS_PLAN" -eq 0 ]; then
     ORIG_CWD="$(pwd)"
 
     if [ -f "$SCRIPTDIR/lambda_src.zip" ]; then
@@ -100,7 +100,11 @@ if [ "$ACTION" == "plan" ]; then
     CLI_ARGS="-out $SCRIPTDIR/terraform.plan"
 fi
 
-if [ "$ACTION" == "apply" -a "$IS_PLAN" -eq 1 ]; then
+if [ "$ACTION" == "output" ]; then
+    "$TERRAFORM_CMD" "$ACTION" $CLI_ARGS \
+        -state="$SCRIPTDIR/terraform.tfstate"
+
+elif [ "$ACTION" == "apply" -a "$IS_PLAN" -eq 1 ]; then
     "$TERRAFORM_CMD" "$ACTION" $CLI_ARGS \
         -state="$SCRIPTDIR/terraform.tfstate" \
         "$PLAN_OR_DIR"

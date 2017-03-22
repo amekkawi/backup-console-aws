@@ -141,10 +141,6 @@ data "template_file" "LambdaConfigJSON" {
 EOF
 }
 
-output "account_id" {
-  value = "${data.aws_caller_identity.Current.account_id}"
-}
-
-output "region" {
-  value = "${data.aws_region.Current.name}"
+output "lambdaJSON" {
+  value = "${data.template_file.LambdaConfigJSON.rendered}"
 }
