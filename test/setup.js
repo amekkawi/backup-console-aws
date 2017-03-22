@@ -110,6 +110,37 @@ expect.extend({
 		}
 	},
 
+	toBeArguments(args, identifier) {
+		expect.assert(
+			TestUtils.isArray(args),
+			'The args argument in expect(actual).toBeArguments() must be an array, %s was given',
+			args
+		);
+
+		expect.assert(
+			TestUtils.isArray(this.actual),
+			'The "actual" for expect(actual).toBeArguments() must be an array, %s was given',
+			args
+		);
+
+		expect.assert(
+			this.actual.length === args.length,
+			`Expected${identifier ? ` ${identifier} ` : ' '} call arg length %s to be %s`,
+			this.actual.length,
+			args.length
+		);
+
+		for (let i = 0, l = args.length; i < l; i++) {
+			expect.assert(
+				this.actual[i] === args[i],
+				`Expected${identifier ? ` ${identifier} ` : ' '} call arg[%s] %s to be %s`,
+				i,
+				this.actuals[i],
+				args[i]
+			);
+		}
+	},
+
 	toThrowWithProps(errorType, props, value) {
 		expect.assert(
 			TestUtils.isFunction(this.actual),

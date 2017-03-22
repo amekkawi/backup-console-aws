@@ -106,11 +106,7 @@ if [ "$ACTION" == "apply" -a "$IS_PLAN" -eq 1 ]; then
         "$PLAN_OR_DIR"
 else
     "$TERRAFORM_CMD" "$ACTION" $CLI_ARGS \
-        -var 'EmailDomain=ses.andremekkawi.com' \
-        -var 'EmailPrefix=backup-consolev3' \
-        -var 'ResourcePrefix=backup-console-v3' \
-        -var 'SecondaryEmail=' \
-        -var 'SesRuleSet=v3-rule-set' \
+        -var-file="$SCRIPTDIR/terraform.tfvars" \
         -var "CommitHash=${COMMIT_HASH}" \
         -state="$SCRIPTDIR/terraform.tfstate" \
         "$PLAN_OR_DIR"
