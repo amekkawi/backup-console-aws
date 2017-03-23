@@ -14,7 +14,7 @@ resource "aws_lambda_function" "VerifyEmailLambda" {
   function_name = "${var.ResourcePrefix}VerifyEmailLambda"
   description = "TODO"
   role = "${aws_iam_role.VerifyEmailLambdaRole.arn}"
-  handler = "lib/index/aws.receivingVerifyEmailRecipients"
+  handler = "lib/index.receivingVerifyEmailRecipients"
   filename = "${path.module}/lambda_src.zip"
   source_code_hash = "${base64sha256(file("${path.module}/lambda_src.zip"))}"
   memory_size = 128
@@ -195,7 +195,7 @@ resource "aws_lambda_function" "HTTPPostReceivingLambda" {
   function_name = "${var.ResourcePrefix}HttpPostLambda"
   description = "TODO"
   role = "${aws_iam_role.HTTPPostReceivingLambdaRole.arn}"
-  handler = "lib/index/aws.receivingHTTPPost"
+  handler = "lib/index.receivingHTTPPost"
   filename = "${path.module}/lambda_src.zip"
   source_code_hash = "${base64sha256(file("${path.module}/lambda_src.zip"))}"
   memory_size = 128

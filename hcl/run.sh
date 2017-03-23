@@ -66,9 +66,9 @@ if [ "$ACTION" == "plan" -o "$ACTION" == "apply" -a "$IS_PLAN" -eq 0 ]; then
     #[ ! -d node_modules/backup-console-core ] && echo "node_modules/backup-console-core dir not found" 1>&2 && exitClean 1
 
     # Use symlink in dev environment
-    if [ ! -d node_modules/backup-console-core -a -d ../backup-console-core ]; then
+    if [ ! -d node_modules/backup-console-core -a -d "$SCRIPTDIR/../../backup-console-core" ]; then
         echo "Creating symlink to backup-console-core"
-        ln -s ../backup-console-core node_modules/backup-console-core
+        ln -s "$SCRIPTDIR/../../backup-console-core" node_modules/backup-console-core
         [ $? -ne 0 ] && echo "Failed to create symlink" 1>&2 && exitClean 1
     fi
 
@@ -80,15 +80,43 @@ if [ "$ACTION" == "plan" -o "$ACTION" == "apply" -a "$IS_PLAN" -eq 0 ]; then
         node_modules/cwlogs-writable
     [ $? -ne 0 ] && echo "Failed to zip lambda_src.zip" 1>&2 && exitClean 1
 
+    # Check files exist in zip
+    ZIP_FILES=(
+        "lib/index.js"
+        "node_modules/backup-console-core/package.json"
+        "node_modules/cwlogs-writable/package.json"
+    )
+    for file in "${ZIP_FILES[@]}"; do
+        if ! unzip -l "$SCRIPTDIR/lambda_src.zip" "$file" > /dev/null; then
+            echo "Failed to find '$file' in lambda_src.zip" 1>&2
+            exitClean 1
+        fi
+    done
+
     echo "Zipping lambda_worker_src.zip"
     zip -qXr "$SCRIPTDIR/lambda_worker_src.zip" \
         lib \
         node_modules/backup-console-core/package.json \
         node_modules/backup-console-core/lib \
-        node_modules/backup-console-core/node_modules/mailparser \
-        node_modules/backup-console-core/node_modules/htmlparser2 \
+        node_modules/mailparser \
+        node_modules/htmlparser2 \
         node_modules/cwlogs-writable
     [ $? -ne 0 ] && echo "Failed to zip lambda_worker_src.zip" 1>&2 && exitClean 1
+
+    # Check files exist in worker zip
+    ZIP_FILES=(
+        "lib/index.js"
+        "node_modules/backup-console-core/package.json"
+        "node_modules/mailparser/package.json"
+        "node_modules/htmlparser2/package.json"
+        "node_modules/cwlogs-writable/package.json"
+    )
+    for file in "${ZIP_FILES[@]}"; do
+        if ! unzip -l "$SCRIPTDIR/lambda_worker_src.zip" "$file" > /dev/null; then
+            echo "Failed to find '$file' in lambda_worker_src.zip" 1>&2
+            exitClean 1
+        fi
+    done
 
     cd "$ORIG_CWD"
     [ $? -ne 0 ] && echo "Failed to CD back to original working dir" 1>&2 && exitClean 1

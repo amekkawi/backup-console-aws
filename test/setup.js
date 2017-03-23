@@ -34,7 +34,30 @@ const baseValues = [
 global.getValuesWithout = function(without) {
 	const set = new Set(baseValues);
 	without && without.forEach((v) => {
-		set.delete(v);
+		if (v === String) {
+			for (const val of set) {
+				if (typeof val === 'string') {
+					set.delete(val);
+				}
+			}
+		}
+		else if (v === Number) {
+			for (const val of set) {
+				if (typeof val === 'number') {
+					set.delete(val);
+				}
+			}
+		}
+		else if (v === isFinite) {
+			for (const val of set) {
+				if (typeof val === 'number' && isFinite(val)) {
+					set.delete(val);
+				}
+			}
+		}
+		else {
+			set.delete(v);
+		}
 	});
 
 	if (set.has(Function)) {

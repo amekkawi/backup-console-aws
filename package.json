@@ -34,6 +34,8 @@
   },
   "dependencies": {
     "aws-sdk": "^2.0.0",
-    "cwlogs-writable": "^0.1.0"
+    "cwlogs-writable": "^0.1.0",
+    "htmlparser2": "^3.9.2",
+    "mailparser": "^2.0.2"
   }
 }

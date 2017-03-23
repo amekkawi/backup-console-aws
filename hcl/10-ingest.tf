@@ -6,7 +6,7 @@ resource "aws_lambda_function" "IngestConsumerLambda" {
   function_name = "${var.ResourcePrefix}IngestConsumerLambda"
   description = "TODO"
   role = "${aws_iam_role.IngestConsumerLambdaRole.arn}"
-  handler = "lib/index/aws.ingestConsumerHandler"
+  handler = "lib/index.ingestConsumerHandler"
   filename = "${path.module}/lambda_src.zip"
   source_code_hash = "${base64sha256(file("${path.module}/lambda_src.zip"))}"
   memory_size = 128
@@ -99,7 +99,7 @@ resource "aws_lambda_function" "IngestWorkerLambda" {
   function_name = "${data.template_file.IngestWorkerLambdaFunctionName.rendered}"
   description = "TODO"
   role = "${aws_iam_role.IngestWorkerLambdaRole.arn}"
-  handler = "lib/index/aws.ingestWorkerHandler"
+  handler = "lib/index.ingestWorkerHandler"
   filename = "${path.module}/lambda_worker_src.zip"
   source_code_hash = "${base64sha256(file("${path.module}/lambda_worker_src.zip"))}"
   memory_size = 128
@@ -226,7 +226,7 @@ resource "aws_lambda_function" "IngestMetricStreamLambda" {
   function_name = "${var.ResourcePrefix}IngestMetricStreamLambda"
   description = "TODO"
   role = "${aws_iam_role.IngestMetricStreamLambdaRole.arn}"
-  handler = "lib/index/aws.ingestMetricsStreamHandler"
+  handler = "lib/index.ingestMetricsStreamHandler"
   filename = "${path.module}/lambda_src.zip"
   source_code_hash = "${base64sha256(file("${path.module}/lambda_src.zip"))}"
   memory_size = 128
