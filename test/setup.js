@@ -158,7 +158,7 @@ expect.extend({
 				this.actual[i] === args[i],
 				`Expected${identifier ? ` ${identifier} ` : ' '} call arg[%s] %s to be %s`,
 				i,
-				this.actuals[i],
+				this.actual[i],
 				args[i]
 			);
 		}
