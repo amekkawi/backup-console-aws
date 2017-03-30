@@ -31,7 +31,21 @@ const baseValues = [
 	Function,
 ];
 
-global.getValuesWithout = function(without) {
+global.getObjectPath = function getObjectPath(obj, path) {
+	if (typeof path === 'string') {
+		path = path.split(/\./g);
+	}
+
+	for (let i = 0; i < path.length; i++) {
+		if (obj != null) {
+			obj = obj[path[i]];
+		}
+	}
+
+	return obj;
+};
+
+global.getValuesWithout = function getValuesWithout(without) {
 	const set = new Set(baseValues);
 	without && without.forEach((v) => {
 		if (v === String) {

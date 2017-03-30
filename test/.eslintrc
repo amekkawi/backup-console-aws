@@ -2,6 +2,7 @@
   "globals": {
     "describe": true,
     "it": true,
+    "getObjectPath": true,
     "getValuesWithout": true,
     "afterEach": true
   }
