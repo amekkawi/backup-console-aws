@@ -1,6 +1,7 @@
 'use strict';
 
 const expect = require('expect');
+const testUtil = require('../../testUtil');
 const BackupResultMeta = require('backup-console-core/lib/structs/BackupResultMeta');
 const BackupResultMetrics = require('backup-console-core/lib/structs/BackupResultMetrics');
 const DBService = require('backup-console-core/lib/services/DBService');
@@ -101,7 +102,7 @@ describe('DBServiceAWS', function() {
 			expect(apiCallSpy.calls[0].arguments.length).toBe(3);
 			expect(apiCallSpy.calls[0].arguments[0]).toBe('addClient DynamoDB put');
 
-			const createdDate = getObjectPath(apiCallSpy.calls[0].arguments[1], 'params.Item.createdDate');
+			const createdDate = testUtil.getObjectPath(apiCallSpy.calls[0].arguments[1], 'params.Item.createdDate');
 			expect(createdDate).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/, 'Expected %s to be an ISO date string');
 
 			expect(apiCallSpy.calls[0].arguments[1]).toEqual({
@@ -504,7 +505,7 @@ describe('DBServiceAWS', function() {
 			expect(apiCallSpy.calls[0].arguments[0]).toBe('addBackupResult DynamoDB put');
 			expect(apiCallSpy.calls[0].arguments[1]).toBeA('object');
 
-			const createdDate = getObjectPath(apiCallSpy.calls[0].arguments[1], 'params.Item.createdDate');
+			const createdDate = testUtil.getObjectPath(apiCallSpy.calls[0].arguments[1], 'params.Item.createdDate');
 			expect(createdDate).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/, 'Expected %s to be an ISO date string');
 
 			expect(apiCallSpy.calls[0].arguments[1]).toEqual({

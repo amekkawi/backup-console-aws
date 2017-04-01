@@ -1,116 +1,29 @@
 'use strict';
 
 const expect = require('expect');
-const TestUtils = require('expect/lib/TestUtils');
+const expectUtils = require('expect/lib/TestUtils');
 const inspect = require('object-inspect');
-
-function formatMessage(message, args) {
-	let index = 0;
-	return message.replace(/%s/g, function() {
-		return inspect(args[index++]);
-	});
-}
-
-const baseValues = [
-	void 0,
-	null,
-	0,
-	-1,
-	1,
-	Infinity,
-	-Infinity,
-	NaN,
-	Array,
-	Object,
-	true,
-	false,
-	'',
-	'0',
-	'1',
-	'a',
-	Function,
-];
-
-global.getObjectPath = function getObjectPath(obj, path) {
-	if (typeof path === 'string') {
-		path = path.split(/\./g);
-	}
-
-	for (let i = 0; i < path.length; i++) {
-		if (obj != null) {
-			obj = obj[path[i]];
-		}
-	}
-
-	return obj;
-};
-
-global.getValuesWithout = function getValuesWithout(without) {
-	const set = new Set(baseValues);
-	without && without.forEach((v) => {
-		if (v === String) {
-			for (const val of set) {
-				if (typeof val === 'string') {
-					set.delete(val);
-				}
-			}
-		}
-		else if (v === Number) {
-			for (const val of set) {
-				if (typeof val === 'number') {
-					set.delete(val);
-				}
-			}
-		}
-		else if (v === isFinite) {
-			for (const val of set) {
-				if (typeof val === 'number' && isFinite(val)) {
-					set.delete(val);
-				}
-			}
-		}
-		else {
-			set.delete(v);
-		}
-	});
-
-	if (set.has(Function)) {
-		set.delete(Function);
-		set.add(function() {});
-	}
-
-	if (set.has(Array)) {
-		set.delete(Array);
-		set.add([]);
-	}
-
-	if (set.has(Object)) {
-		set.delete(Object);
-		set.add({});
-	}
-
-	return Array.from(set);
-};
+const testUtil = require('./testUtil');
 
 expect.extend({
 	toBeObjectWithProps(objectType, props, identifier) {
 		identifier = identifier || inspect(this.actual);
 
 		expect.assert(
-			TestUtils.isFunction(objectType),
+			expectUtils.isFunction(objectType),
 			'The objectType argument in expect(actual).toBeObject() must be a function, %s was given',
 			objectType
 		);
 
 		if (!this.actual || typeof this.actual !== 'object') {
-			throw new Error(formatMessage(
+			throw new Error(testUtil.formatMessage(
 				`Expected ${identifier} to be an object`,
 				[]
 			));
 		}
 
 		if (!(this.actual instanceof objectType)) {
-			throw new Error(formatMessage(
+			throw new Error(testUtil.formatMessage(
 				`Expected ${identifier} to be an instance of %s instead of %s`,
 				[objectType, this.actual.constructor]
 			));
@@ -119,8 +32,8 @@ expect.extend({
 		const expectedProps = Object.keys(props).sort();
 		const actualProps = Object.keys(this.actual).sort();
 
-		if (!isArrayEqual(expectedProps, actualProps)) {
-			throw new Error(formatMessage(
+		if (!testUtil.isArrayEqual(expectedProps, actualProps)) {
+			throw new Error(testUtil.formatMessage(
 				`Expected ${identifier} prop keys %s to be %s`,
 				[expectedProps, actualProps]
 			));
@@ -133,13 +46,12 @@ expect.extend({
 					this,
 					actualProps[i],
 					props,
-					identifier,
-					formatMessage
+					identifier
 				);
 			}
 
 			if (fnRet !== true && (fnRet === false || this.actual[actualProps[i]] !== props[actualProps[i]])) {
-				throw new Error(formatMessage(
+				throw new Error(testUtil.formatMessage(
 					`Expected ${identifier} prop %s value %s to be %s`,
 					[actualProps[i], expectedProps[actualProps[i]], actualProps[actualProps[i]]]
 				));
@@ -149,13 +61,13 @@ expect.extend({
 
 	toBeArguments(args, identifier) {
 		expect.assert(
-			TestUtils.isArray(args),
+			expectUtils.isArray(args),
 			'The args argument in expect(actual).toBeArguments() must be an array, %s was given',
 			args
 		);
 
 		expect.assert(
-			TestUtils.isArray(this.actual),
+			expectUtils.isArray(this.actual),
 			'The "actual" for expect(actual).toBeArguments() must be an array, %s was given',
 			args
 		);
@@ -180,7 +92,7 @@ expect.extend({
 
 	toThrowWithProps(errorType, props, value) {
 		expect.assert(
-			TestUtils.isFunction(this.actual),
+			expectUtils.isFunction(this.actual),
 			'The "actual" argument in expect(actual).toThrowWithProps() must be a function, %s was given',
 			this.actual
 		);
@@ -190,7 +102,7 @@ expect.extend({
 		}
 		catch (err) {
 			if (!(err instanceof errorType)) {
-				const throwErr = new Error(formatMessage(
+				const throwErr = new Error(testUtil.formatMessage(
 					'Expected %s to throw an instance of %s instead of %s' + (arguments.length > 2 ? ' for value %s' : ''),
 					[this.actual, errorType || 'an error', err.constructor, value]
 				));
@@ -205,23 +117,9 @@ expect.extend({
 			return this;
 		}
 
-		throw new Error(formatMessage(
+		throw new Error(testUtil.formatMessage(
 			'Expected %s to throw an error' + (arguments.length > 0 ? ' for value %s' : ''),
 			[this.actual, value]
 		));
 	},
 });
-
-function isArrayEqual(arrA, arrB) {
-	if (arrA.length !== arrB.length) {
-		return false;
-	}
-
-	for (let i = 0; i < arrA.length; i++) {
-		if (arrA[i] !== arrB[i]) {
-			return false;
-		}
-	}
-
-	return true;
-}
