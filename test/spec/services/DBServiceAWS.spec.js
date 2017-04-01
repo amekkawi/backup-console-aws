@@ -1003,13 +1003,307 @@ describe('DBServiceAWS', function() {
 		);
 	});
 
-	describe('DBServiceAWS#_incrementBackupResultMonthlyMetrics', function() {
-		it('DBServiceAWS#_incrementBackupResultMonthlyMetrics'); // TODO
-	});
+	[
+		{ method: '_incrementBackupResultMonthlyMetrics', period: 'monthly' },
+		{ method: '_incrementBackupResultWeeklyMetrics', period: 'weekly' },
+	]
+		.forEach(function(opts) {
+			describe(`DBServiceAWS#${opts.method}`, function() {
+				it('should call DocumentClient#update through logger.logApiCall for each year', function() {
+					const aggregatedData = {
+						2016: {
+							1: {
+								count: 1,
+								bytes: 2,
+								items: 3,
+								errors: 4,
+							},
+						},
+						2017: {
+							1: {
+								count: 10,
+								bytes: 20,
+								items: 30,
+								errors: 40,
+							},
+						},
+					};
 
-	describe('DBServiceAWS#_incrementBackupResultWeeklyMetrics', function() {
-		it('DBServiceAWS#_incrementBackupResultWeeklyMetrics'); // TODO
-	});
+					const promiseSpy = expect.createSpy()
+						.andReturn(Promise.resolve());
+
+					const updateSpy = expect.createSpy()
+						.andReturn({
+							promise: promiseSpy,
+						});
+
+					const apiCallSpy = expect.createSpy()
+						.andCall(function(msg, fields, fn) {
+							// Delay to assure handling async
+							return new Promise(function(resolve) {
+								setTimeout(resolve, 1);
+							})
+								.then(function() {
+									return fn();
+								});
+						});
+
+					const services = {
+						config: {
+							AWS_REGION: 'aws-region',
+							AWS_RESOURCE_ATTR: {
+								'aws_dynamodb_table.ClientMetric.name': 'table-clientmetric-name',
+							},
+						},
+						logger: {
+							logApiCall: apiCallSpy,
+						},
+						platform: {
+							DynamoDB: Object.assign(function() {
+								// Do nothing
+							}, {
+								DocumentClient: function() {
+									return {
+										update: updateSpy,
+									};
+								},
+							}),
+						},
+					};
+
+					const service = new DBServiceAWS(services);
+
+					const promise = service[opts.method](
+						'client-id',
+						aggregatedData
+					);
+
+					expect(promise).toBeA(Promise);
+
+					return promise.then(function() {
+						expect(apiCallSpy.calls.length).toBe(2);
+
+						expect(apiCallSpy.calls[0].arguments.length).toBe(3);
+						expect(apiCallSpy.calls[0].arguments[0]).toBe(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`);
+						expect(apiCallSpy.calls[0].arguments[1]).toBeA('object');
+						expect(apiCallSpy.calls[0].arguments[1]).toEqual({
+							params: {
+								TableName: 'table-clientmetric-name',
+								Key: {
+									clientId: 'client-id',
+									metricId: `${opts.period}-2016`,
+								},
+								UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2, #n3 :v3`,
+								ExpressionAttributeNames: {
+									'#n0': '1-count',
+									'#n1': '1-bytes',
+									'#n2': '1-items',
+									'#n3': '1-errors',
+								},
+								ExpressionAttributeValues: {
+									':v0': 1,
+									':v1': 2,
+									':v2': 3,
+									':v3': 4,
+								},
+								ReturnValues: 'NONE',
+							},
+						});
+
+						expect(apiCallSpy.calls[1].arguments.length).toBe(3);
+						expect(apiCallSpy.calls[1].arguments[0]).toBe(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`);
+						expect(apiCallSpy.calls[1].arguments[1]).toBeA('object');
+						expect(apiCallSpy.calls[1].arguments[1]).toEqual({
+							params: {
+								TableName: 'table-clientmetric-name',
+								Key: {
+									clientId: 'client-id',
+									metricId: `${opts.period}-2017`,
+								},
+								UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2, #n3 :v3`,
+								ExpressionAttributeNames: {
+									'#n0': '1-count',
+									'#n1': '1-bytes',
+									'#n2': '1-items',
+									'#n3': '1-errors',
+								},
+								ExpressionAttributeValues: {
+									':v0': 10,
+									':v1': 20,
+									':v2': 30,
+									':v3': 40,
+								},
+								ReturnValues: 'NONE',
+							},
+						});
+
+						expect(updateSpy.calls.length).toBe(2);
+						expect(updateSpy.calls[0].arguments).toBeArguments([
+							apiCallSpy.calls[0].arguments[1].params,
+						]);
+						expect(updateSpy.calls[1].arguments).toBeArguments([
+							apiCallSpy.calls[1].arguments[1].params,
+						]);
+
+						expect(promiseSpy.calls.length).toBe(2);
+					});
+				});
+
+				it('should stop if update for year fails', function() {
+					const expectedError = new Error();
+					const aggregatedData = {
+						2016: {
+							1: {
+								count: 1,
+								bytes: 2,
+								items: 3,
+								errors: 4,
+							},
+						},
+						2017: {
+							1: {
+								count: 10,
+								bytes: 20,
+								items: 30,
+								errors: 40,
+							},
+						},
+					};
+
+					const apiCallSpy = expect.createSpy()
+						.andReturn(Promise.reject(expectedError));
+
+					const services = {
+						config: {
+							AWS_REGION: 'aws-region',
+							AWS_RESOURCE_ATTR: {
+								'aws_dynamodb_table.ClientMetric.name': 'table-clientmetric-name',
+							},
+						},
+						logger: {
+							logApiCall: apiCallSpy,
+						},
+						platform: {
+							DynamoDB: Object.assign(function() {
+								// Do nothing
+							}, {
+								DocumentClient: function() {
+									// Do nothing
+								},
+							}),
+						},
+					};
+
+					const service = new DBServiceAWS(services);
+
+					const promise = service[opts.method](
+						'client-id',
+						aggregatedData
+					);
+
+					expect(promise).toBeA(Promise);
+
+					return promise.then(function() {
+						throw new Error('Expected to not resolve');
+					}, function(err) {
+						if (err !== expectedError) {
+							throw err;
+						}
+
+						expect(apiCallSpy.calls.length).toBe(1);
+					});
+				});
+
+				it('should only update props with non-zero values and only years with at least one prop to update', function() {
+					const aggregatedData = {
+						2017: {
+							2: {
+								count: 0,
+								bytes: 200,
+								items: 300,
+								errors: 400,
+							},
+							3: {
+								count: 0,
+								bytes: 0,
+								items: 0,
+								errors: 0,
+							},
+						},
+						2018: {
+							3: {
+								count: 0,
+								bytes: 0,
+								items: 0,
+								errors: 0,
+							},
+						},
+					};
+
+					const apiCallSpy = expect.createSpy()
+						.andReturn(Promise.resolve());
+
+					const services = {
+						config: {
+							AWS_REGION: 'aws-region',
+							AWS_RESOURCE_ATTR: {
+								'aws_dynamodb_table.ClientMetric.name': 'table-clientmetric-name',
+							},
+						},
+						logger: {
+							logApiCall: apiCallSpy,
+						},
+						platform: {
+							DynamoDB: Object.assign(function() {
+								// Do nothing
+							}, {
+								DocumentClient: function() {
+									// Do Nothing
+								},
+							}),
+						},
+					};
+
+					const service = new DBServiceAWS(services);
+
+					const promise = service[opts.method](
+						'client-id',
+						aggregatedData
+					);
+
+					expect(promise).toBeA(Promise);
+
+					return promise.then(function() {
+						expect(apiCallSpy.calls.length).toBe(1);
+
+						expect(apiCallSpy.calls[0].arguments.length).toBe(3);
+						expect(apiCallSpy.calls[0].arguments[0]).toBe(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`);
+						expect(apiCallSpy.calls[0].arguments[1]).toBeA('object');
+						expect(apiCallSpy.calls[0].arguments[1]).toEqual({
+							params: {
+								TableName: 'table-clientmetric-name',
+								Key: {
+									clientId: 'client-id',
+									metricId: `${opts.period}-2017`,
+								},
+								UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2`,
+								ExpressionAttributeNames: {
+									'#n0': '2-bytes',
+									'#n1': '2-items',
+									'#n2': '2-errors',
+								},
+								ExpressionAttributeValues: {
+									':v0': 200,
+									':v1': 300,
+									':v2': 400,
+								},
+								ReturnValues: 'NONE',
+							},
+						});
+					});
+				});
+			});
+		});
 });
 
 function assertGetter(tableResourceId, tableName, method, args, key) {
