@@ -1,16 +1,16 @@
 'use strict';
 
-const expect = require('expect');
+const chai = require('chai');
 const IngestService = require('backup-console-core/lib/services/IngestService');
 const IngestServiceAWS = require('../../../lib/services/IngestServiceAWS');
 
 describe('IngestServiceAWS', function() {
 	afterEach(function() {
-		expect.restoreSpies();
+		chai.spy.restoreSpies();
 	});
 
 	it('should extend from Service', function() {
-		expect(IngestServiceAWS.prototype).toBeA(IngestService, 'Expected IngestServiceAWS %s to extend from %s');
+		expect(IngestServiceAWS.prototype).to.be.instanceof(IngestService);
 	});
 
 	describe('constructor', function() {

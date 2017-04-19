@@ -25,9 +25,10 @@
     "arq"
   ],
   "devDependencies": {
+    "chai": "^3.5.0",
+    "chai-spies": "^0.7.1",
     "eslint": "^3.9.1",
     "eslint-plugin-jsdoc": "^2.4.0",
-    "expect": "^1.20.2",
     "mocha": "^3.2.0",
     "object-inspect": "^1.2.1",
     "proxyquire": "^1.7.11"

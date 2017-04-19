@@ -1,125 +1,45 @@
 'use strict';
 
-const expect = require('expect');
-const expectUtils = require('expect/lib/TestUtils');
-const inspect = require('object-inspect');
-const testUtil = require('./testUtil');
+const chai = require('chai');
+chai.use(require('./chai-spy'));
 
-expect.extend({
-	toBeObjectWithProps(objectType, props, identifier) {
-		identifier = identifier || inspect(this.actual);
+chai.use(function(chai, _) {
+	const Assertion = chai.Assertion;
 
-		expect.assert(
-			expectUtils.isFunction(objectType),
-			'The objectType argument in expect(actual).toBeObject() must be a function, %s was given',
-			objectType
-		);
-
-		if (!this.actual || typeof this.actual !== 'object') {
-			throw new Error(testUtil.formatMessage(
-				`Expected ${identifier} to be an object`,
-				[]
-			));
+	Assertion.addMethod('properties', function(props, msg) {
+		if (msg) {
+			_.flag(this, 'message', msg);
 		}
 
-		if (!(this.actual instanceof objectType)) {
-			throw new Error(testUtil.formatMessage(
-				`Expected ${identifier} to be an instance of %s instead of %s`,
-				[objectType, this.actual.constructor]
-			));
-		}
+		const negate = _.flag(this, 'negate');
+		const obj = _.flag(this, 'object');
 
-		const expectedProps = Object.keys(props).sort();
-		const actualProps = Object.keys(this.actual).sort();
+		Object.keys(props).forEach((name) => {
+			const hasProperty = _.hasProperty(name, obj);
+			const value = obj[name];
 
-		if (!testUtil.isArrayEqual(expectedProps, actualProps)) {
-			throw new Error(testUtil.formatMessage(
-				`Expected ${identifier} prop keys %s to be %s`,
-				[expectedProps, actualProps]
-			));
-		}
+			if (negate && arguments.length > 1) {
+				if (undefined === value) {
+					msg = (msg != null) ? msg + ': ' : '';
+					throw new Error(msg + _.inspect(obj) + ' has no property' + _.inspect(name));
+				}
+			}
+			else {
+				this.assert(
+					hasProperty,
+					'expected #{this} to have a property ' + _.inspect(name),
+					'expected #{this} to not have property ' + _.inspect(name));
+			}
 
-		for (let i = 0; i < actualProps.length; i++) {
-			let fnRet;
-			if (typeof props[actualProps[i]] === 'function') {
-				fnRet = props[actualProps[i]].call(
-					this,
-					actualProps[i],
-					props,
-					identifier
+			if (arguments.length > 1) {
+				this.assert(
+					props[name] === value,
+					'expected #{this} to have a property ' + _.inspect(name) + ' of #{exp}, but got #{act}',
+					'expected #{this} to not have a property ' + _.inspect(name) + ' of #{act}',
+					props[name],
+					value
 				);
 			}
-
-			if (fnRet !== true && (fnRet === false || this.actual[actualProps[i]] !== props[actualProps[i]])) {
-				throw new Error(testUtil.formatMessage(
-					`Expected ${identifier} prop %s value %s to be %s`,
-					[actualProps[i], expectedProps[actualProps[i]], actualProps[actualProps[i]]]
-				));
-			}
-		}
-	},
-
-	toBeArguments(args, identifier) {
-		expect.assert(
-			expectUtils.isArray(args),
-			'The args argument in expect(actual).toBeArguments() must be an array, %s was given',
-			args
-		);
-
-		expect.assert(
-			expectUtils.isArray(this.actual),
-			'The "actual" for expect(actual).toBeArguments() must be an array, %s was given',
-			args
-		);
-
-		expect.assert(
-			this.actual.length === args.length,
-			`Expected${identifier ? ` ${identifier} ` : ' '} call arg length %s to be %s`,
-			this.actual.length,
-			args.length
-		);
-
-		for (let i = 0, l = args.length; i < l; i++) {
-			expect.assert(
-				this.actual[i] === args[i],
-				`Expected${identifier ? ` ${identifier} ` : ' '} call arg[%s] %s to be %s`,
-				i,
-				this.actual[i],
-				args[i]
-			);
-		}
-	},
-
-	toThrowWithProps(errorType, props, value) {
-		expect.assert(
-			expectUtils.isFunction(this.actual),
-			'The "actual" argument in expect(actual).toThrowWithProps() must be a function, %s was given',
-			this.actual
-		);
-
-		try {
-			this.actual.apply(this.context, this.args);
-		}
-		catch (err) {
-			if (!(err instanceof errorType)) {
-				const throwErr = new Error(testUtil.formatMessage(
-					'Expected %s to throw an instance of %s instead of %s' + (arguments.length > 2 ? ' for value %s' : ''),
-					[this.actual, errorType || 'an error', err.constructor, value]
-				));
-				throwErr.stack = throwErr.message + '\n' + err.stack;
-				throw throwErr;
-			}
-
-			if (props) {
-				expect(err).toInclude(props, 'Expected %s to include %s' + (arguments.length > 2 ? ' for value ' + inspect(value) : ''));
-			}
-
-			return this;
-		}
-
-		throw new Error(testUtil.formatMessage(
-			'Expected %s to throw an error' + (arguments.length > 0 ? ' for value %s' : ''),
-			[this.actual, value]
-		));
-	},
+		});
+	});
 });

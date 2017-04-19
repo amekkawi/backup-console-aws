@@ -1,7 +1,7 @@
 'use strict';
 
-const expect = require('expect');
-const testUtil = require('../../testUtil');
+const chai = require('chai');
+const expect = chai.expect;
 const BackupResultMeta = require('backup-console-core/lib/structs/BackupResultMeta');
 const BackupResultMetrics = require('backup-console-core/lib/structs/BackupResultMetrics');
 const DBService = require('backup-console-core/lib/services/DBService');
@@ -9,17 +9,17 @@ const DBServiceAWS = require('../../../lib/services/DBServiceAWS');
 
 describe('DBServiceAWS', function() {
 	afterEach(function() {
-		expect.restoreSpies();
+		chai.spy.restoreSpies();
 	});
 
 	it('should extend from Service', function() {
-		expect(DBServiceAWS.prototype).toBeA(DBService, 'Expected DBServiceAWS %s to extend from %s');
+		expect(DBServiceAWS.prototype).to.be.instanceof(DBService);
 	});
 
 	describe('constructor', function() {
 		it('should create instance of DynamoDB and DocumentClient', function() {
-			const dbSpy = expect.createSpy();
-			const docSpy = expect.createSpy();
+			const dbSpy = chai.spy('dbSpy');
+			const docSpy = chai.spy('docSpy');
 			let dynamoDB;
 
 			const services = {
@@ -38,39 +38,36 @@ describe('DBServiceAWS', function() {
 				},
 			};
 
-			new DBServiceAWS(services);
+			const service = new DBServiceAWS(services);
+			expect(service).to.be.instanceof(DBService);
 
-			expect(dbSpy.calls.length).toBe(1);
-			expect(dbSpy.calls[0].arguments.length).toBe(1);
-			expect(dbSpy.calls[0].arguments[0]).toEqual({
-				region: 'aws-region',
-			});
+			expect(dbSpy).called.once
+				.with.callNum(1).args.to.be.lengthOf(1)
+				.with.arg(0).deep.equals({ region: 'aws-region' });
 
-			expect(docSpy.calls.length).toBe(1);
-			expect(docSpy.calls[0].arguments.length).toBe(1);
-			expect(docSpy.calls[0].arguments[0]).toBeA('object');
-			expect(Object.keys(docSpy.calls[0].arguments[0])).toEqual(['service']);
-			expect(docSpy.calls[0].arguments[0].service).toBe(dynamoDB);
+			expect(docSpy).called.once
+				.with.callNum(1).args.to.be.lengthOf(1)
+				.with.arg(0).to.be.a('object').with.keys(['service'])
+				.with.arg(0).to.have.property('service', dynamoDB);
 		});
 	});
 
 	describe('DBServiceAWS#addClient', function() {
 		it('should call DocumentClient#put through logger.logApiCall', function() {
 			const expectedError = new Error();
-			const promiseSpy =  expect.createSpy()
-				.andReturn(Promise.reject(expectedError));
+			const promiseSpy =  chai.spy().andReturn(
+				Promise.reject(expectedError)
+			);
 
-			const putSpy = expect.createSpy()
-				.andReturn({
-					promise: promiseSpy,
-				});
+			const putSpy = chai.spy().andReturn({
+				promise: promiseSpy,
+			});
 
-			const apiCallSpy = expect.createSpy()
-				.andCall(function(msg, fields, fn) {
-					return new Promise(function(resolve) {
-						resolve(fn());
-					});
+			const apiCallSpy = chai.spy(function(msg, fields, fn) {
+				return new Promise(function(resolve) {
+					resolve(fn());
 				});
+			});
 
 			const services = {
 				config: {
@@ -96,34 +93,35 @@ describe('DBServiceAWS', function() {
 			};
 
 			const promise = new DBServiceAWS(services).addClient('client-id', 'client-key');
-			expect(promise).toBeA(Promise);
+			expect(promise).to.be.instanceof(Promise);
 
-			expect(apiCallSpy.calls.length).toBe(1);
-			expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-			expect(apiCallSpy.calls[0].arguments[0]).toBe('addClient DynamoDB put');
+			expect(apiCallSpy).called.once
+				.with.callNum(1).args.to.be.lengthOf(3)
+				.with.arg(0).to.equal('addClient DynamoDB put');
 
-			const createdDate = testUtil.getObjectPath(apiCallSpy.calls[0].arguments[1], 'params.Item.createdDate');
-			expect(createdDate).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/, 'Expected %s to be an ISO date string');
+			expect(apiCallSpy)
+				.callNum(1).arg(1)
+				.to.have.deep.property('params.Item.createdDate')
+				.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
 
-			expect(apiCallSpy.calls[0].arguments[1]).toEqual({
+			expect(apiCallSpy).callNum(1).arg(1).to.deep.equal({
 				params: {
 					TableName: 'table-client-name',
 					Item: {
 						clientId: 'client-id',
 						clientKey: 'client-key',
-						createdDate,
+						createdDate: apiCallSpy.getCall(0).args[1].params.Item.createdDate,
 					},
 					ConditionExpression: 'attribute_not_exists(clientId)',
 					ReturnValues: 'NONE',
 				},
 			});
 
-			expect(putSpy.calls.length).toBe(1);
-			expect(putSpy.calls[0].arguments).toBeArguments([
-				apiCallSpy.calls[0].arguments[1].params,
-			]);
+			expect(putSpy).called.once
+				.with.callNum(1).args.to.be.lengthOf(1)
+				.with.arg(0).to.equal(apiCallSpy.getCall(0).args[1].params);
 
-			expect(promiseSpy.calls.length).toBe(1);
+			expect(promiseSpy).called(1);
 
 			return promise.then(function() {
 				throw new Error('Expected not to resolve');
@@ -148,15 +146,15 @@ describe('DBServiceAWS', function() {
 
 		it('should call DocumentClient#get through logger.logApiCall', function() {
 			const expectedError = new Error();
-			const promiseSpy =  expect.createSpy()
+			const promiseSpy =  chai.spy()
 				.andReturn(Promise.reject(expectedError));
 
-			const getSpy = expect.createSpy()
+			const getSpy = chai.spy()
 				.andReturn({
 					promise: promiseSpy,
 				});
 
-			const apiCallSpy = expect.createSpy()
+			const apiCallSpy = chai.spy()
 				.andCall(function(msg, fields, fn) {
 					return new Promise(function(resolve) {
 						resolve(fn());
@@ -187,26 +185,25 @@ describe('DBServiceAWS', function() {
 			};
 
 			const promise = new DBServiceAWS(services).getClient('client-id');
-			expect(promise).toBeA(Promise);
+			expect(promise).to.be.instanceof(Promise);
 
-			expect(apiCallSpy.calls.length).toBe(1);
-			expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-			expect(apiCallSpy.calls[0].arguments[0]).toBe('getClient DynamoDB get');
-			expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-				params: {
-					TableName: 'table-client-name',
-					Key: {
-						clientId: 'client-id',
+			expect(apiCallSpy).called.once
+				.with.callNum(1).args.to.be.lengthOf(3)
+				.with.arg(0).to.equal('getClient DynamoDB get')
+				.with.arg(1).to.deep.equal({
+					params: {
+						TableName: 'table-client-name',
+						Key: {
+							clientId: 'client-id',
+						},
 					},
-				},
-			});
+				});
 
-			expect(getSpy.calls.length).toBe(1);
-			expect(getSpy.calls[0].arguments).toBeArguments([
-				apiCallSpy.calls[0].arguments[1].params,
-			]);
+			expect(getSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(1)
+				.with.arg(0).to.equal(apiCallSpy.getCall(0).args[1].params);
 
-			expect(promiseSpy.calls.length).toBe(1);
+			expect(promiseSpy).to.be.called(1);
 
 			return promise.then(function() {
 				throw new Error('Expected not to resolve');
@@ -219,7 +216,7 @@ describe('DBServiceAWS', function() {
 
 		it('should should return "Item" property of result', function() {
 			const expectedResult = {};
-			const apiCallSpy = expect.createSpy()
+			const apiCallSpy = chai.spy()
 				.andCall(function(msg, fields, fn) {
 					return new Promise(function(resolve) {
 						resolve(fn());
@@ -258,36 +255,36 @@ describe('DBServiceAWS', function() {
 			};
 
 			const promise = new DBServiceAWS(services).getClient('client-id');
-			expect(promise).toBeA(Promise);
+			expect(promise).to.be.instanceof(Promise);
 
-			expect(apiCallSpy.calls.length).toBe(1);
-			expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-			expect(apiCallSpy.calls[0].arguments[0]).toBe('getClient DynamoDB get');
-			expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-				params: {
-					TableName: 'table-client-name',
-					Key: {
-						clientId: 'client-id',
+			expect(apiCallSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(3)
+				.with.arg(0).to.equal('getClient DynamoDB get')
+				.with.arg(1).to.deep.equal({
+					params: {
+						TableName: 'table-client-name',
+						Key: {
+							clientId: 'client-id',
+						},
 					},
-				},
-			});
+				});
 
 			return promise.then(function(result) {
-				expect(result).toBe(expectedResult);
+				expect(result).to.equal(expectedResult);
 			});
 		});
 
 		it('should pass options.attributes as AttributesToGet param', function() {
 			const expectedError = new Error();
 
-			const getSpy = expect.createSpy()
+			const getSpy = chai.spy()
 				.andReturn({
 					promise() {
 						return Promise.reject(expectedError);
 					},
 				});
 
-			const apiCallSpy = expect.createSpy()
+			const apiCallSpy = chai.spy()
 				.andCall(function(msg, fields, fn) {
 					return new Promise(function(resolve) {
 						resolve(fn());
@@ -320,25 +317,24 @@ describe('DBServiceAWS', function() {
 			const promise = new DBServiceAWS(services).getClient('client-id', {
 				attributes: ['alpha'],
 			});
-			expect(promise).toBeA(Promise);
+			expect(promise).to.be.instanceof(Promise);
 
-			expect(apiCallSpy.calls.length).toBe(1);
-			expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-			expect(apiCallSpy.calls[0].arguments[0]).toBe('getClient DynamoDB get');
-			expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-				params: {
-					TableName: 'table-client-name',
-					Key: {
-						clientId: 'client-id',
+			expect(apiCallSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(3)
+				.with.arg(0).to.equal('getClient DynamoDB get')
+				.with.arg(1).to.deep.equal({
+					params: {
+						TableName: 'table-client-name',
+						Key: {
+							clientId: 'client-id',
+						},
+						AttributesToGet: ['alpha'],
 					},
-					AttributesToGet: ['alpha'],
-				},
-			});
+				});
 
-			expect(getSpy.calls.length).toBe(1);
-			expect(getSpy.calls[0].arguments).toBeArguments([
-				apiCallSpy.calls[0].arguments[1].params,
-			]);
+			expect(getSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(1)
+				.with.arg(0).to.equal(apiCallSpy.getCall(0).args[1].params);
 
 			return promise.then(function() {
 				throw new Error('Expected not to resolve');
@@ -365,14 +361,14 @@ describe('DBServiceAWS', function() {
 		it('should pass options.attributes as AttributesToGet param', function() {
 			const expectedError = new Error();
 
-			const getSpy = expect.createSpy()
+			const getSpy = chai.spy()
 				.andReturn({
 					promise() {
 						return Promise.reject(expectedError);
 					},
 				});
 
-			const apiCallSpy = expect.createSpy()
+			const apiCallSpy = chai.spy()
 				.andCall(function(msg, fields, fn) {
 					return new Promise(function(resolve) {
 						resolve(fn());
@@ -405,26 +401,25 @@ describe('DBServiceAWS', function() {
 			const promise = new DBServiceAWS(services).getBackupResult('client-id', 'backup-id', {
 				attributes: ['alpha'],
 			});
-			expect(promise).toBeA(Promise);
+			expect(promise).to.be.instanceof(Promise);
 
-			expect(apiCallSpy.calls.length).toBe(1);
-			expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-			expect(apiCallSpy.calls[0].arguments[0]).toBe('getBackupResult DynamoDB get');
-			expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-				params: {
-					TableName: 'table-backup-name',
-					Key: {
-						clientId: 'client-id',
-						backupId: 'backup-id',
+			expect(apiCallSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(3)
+				.with.arg(0).to.equal('getBackupResult DynamoDB get')
+				.with.arg(1).to.deep.equal({
+					params: {
+						TableName: 'table-backup-name',
+						Key: {
+							clientId: 'client-id',
+							backupId: 'backup-id',
+						},
+						AttributesToGet: ['alpha'],
 					},
-					AttributesToGet: ['alpha'],
-				},
-			});
+				});
 
-			expect(getSpy.calls.length).toBe(1);
-			expect(getSpy.calls[0].arguments).toBeArguments([
-				apiCallSpy.calls[0].arguments[1].params,
-			]);
+			expect(getSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(1)
+				.with.arg(0).to.equal(apiCallSpy.getCall(0).args[1].params);
 
 			return promise.then(function() {
 				throw new Error('Expected not to resolve');
@@ -456,15 +451,15 @@ describe('DBServiceAWS', function() {
 				errorCount: 4,
 			});
 
-			const promiseSpy =  expect.createSpy()
+			const promiseSpy =  chai.spy()
 				.andReturn(Promise.reject(expectedError));
 
-			const putSpy = expect.createSpy()
+			const putSpy = chai.spy()
 				.andReturn({
 					promise: promiseSpy,
 				});
 
-			const apiCallSpy = expect.createSpy()
+			const apiCallSpy = chai.spy()
 				.andCall(function(msg, fields, fn) {
 					return new Promise(function(resolve) {
 						resolve(fn());
@@ -498,17 +493,19 @@ describe('DBServiceAWS', function() {
 				expectedMeta,
 				expectedMetrics
 			);
-			expect(promise).toBeA(Promise);
+			expect(promise).to.be.instanceof(Promise);
 
-			expect(apiCallSpy.calls.length).toBe(1);
-			expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-			expect(apiCallSpy.calls[0].arguments[0]).toBe('addBackupResult DynamoDB put');
-			expect(apiCallSpy.calls[0].arguments[1]).toBeA('object');
+			expect(apiCallSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(3)
+				.with.arg(0).to.equal('addBackupResult DynamoDB put')
+				.with.arg(1).to.be.an('object');
 
-			const createdDate = testUtil.getObjectPath(apiCallSpy.calls[0].arguments[1], 'params.Item.createdDate');
-			expect(createdDate).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/, 'Expected %s to be an ISO date string');
+			expect(apiCallSpy)
+				.callNum(1).arg(1)
+				.to.have.deep.property('params.Item.createdDate')
+				.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
 
-			expect(apiCallSpy.calls[0].arguments[1]).toEqual({
+			expect(apiCallSpy).callNum(1).arg(1).to.deep.equal({
 				params: {
 					TableName: 'table-backup-name',
 					Item: {
@@ -521,19 +518,18 @@ describe('DBServiceAWS', function() {
 						totalItems: 2,
 						totalBytes: 3,
 						errorCount: 4,
-						createdDate,
+						createdDate: apiCallSpy.getCall(0).args[1].params.Item.createdDate,
 					},
 					ConditionExpression: 'attribute_not_exists(backupId)',
 					ReturnValues: 'NONE',
 				},
 			});
 
-			expect(putSpy.calls.length).toBe(1);
-			expect(putSpy.calls[0].arguments).toBeArguments([
-				apiCallSpy.calls[0].arguments[1].params,
-			]);
+			expect(putSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(1)
+				.with.arg(0).to.equal(apiCallSpy.getCall(0).args[1].params);
 
-			expect(promiseSpy.calls.length).toBe(1);
+			expect(promiseSpy).to.be.called(1);
 
 			return promise.then(function() {
 				throw new Error('Expected not to resolve');
@@ -562,7 +558,7 @@ describe('DBServiceAWS', function() {
 				],
 			});
 
-			const apiCallSpy = expect.createSpy()
+			const apiCallSpy = chai.spy()
 				.andCall(function(msg, fields, fn) {
 					return new Promise(function(resolve) {
 						resolve(fn());
@@ -603,11 +599,11 @@ describe('DBServiceAWS', function() {
 				expectedMetrics
 			);
 
-			expect(apiCallSpy.calls.length).toBe(1);
-			expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-			expect(apiCallSpy.calls[0].arguments[1].params.Item.errorMessages).toEqual([
-				'err-message',
-			]);
+			expect(apiCallSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(3)
+				.with.arg(1).to.have.deep.property('params.Item.errorMessages').deep.equal([
+					'err-message',
+				]);
 
 			return promise.then(function() {
 				throw new Error('Expected not to resolve');
@@ -657,30 +653,27 @@ describe('DBServiceAWS', function() {
 
 			const service = new DBServiceAWS(services);
 
-			const aggregateSpy = expect.spyOn(service, 'aggregateBackupResultMetrics')
-				.andCall(function() {
-					throw expectedError;
-				});
+			const aggregateSpy = chai.spy.on(service, 'aggregateBackupResultMetrics')
+				.andThrow(expectedError);
 
-			const incMonthlySpy = expect.spyOn(service, '_incrementBackupResultMonthlyMetrics')
+			const incMonthlySpy = chai.spy.on(service, '_incrementBackupResultMonthlyMetrics')
 				.andReturn(Promise.reject('Expected not to be called'));
 
-			const incWeeklySpy = expect.spyOn(service, '_incrementBackupResultWeeklyMetrics')
+			const incWeeklySpy = chai.spy.on(service, '_incrementBackupResultWeeklyMetrics')
 				.andReturn(Promise.reject('Expected not to be called'));
 
-			expect(aggregateSpy.calls.length).toBe(0);
+			expect(aggregateSpy).not.been.called();
 
 			const promise = service.incrementBackupResultMetrics(
 				'client-id',
 				expectedBatch
 			);
 
-			expect(promise).toBeA(Promise);
+			expect(promise).to.be.instanceof(Promise);
 
-			expect(aggregateSpy.calls.length).toBe(1);
-			expect(aggregateSpy.calls[0].arguments).toBeArguments([
-				expectedBatch,
-			]);
+			expect(aggregateSpy).to.be.called.once
+				.with.callNum(1).args.to.be.lengthOf(1)
+				.with.arg(0).to.equal(expectedBatch);
 
 			return promise.then(function() {
 				throw new Error('Expected not to resolve');
@@ -689,8 +682,8 @@ describe('DBServiceAWS', function() {
 					throw err;
 				}
 
-				expect(incMonthlySpy.calls.length).toBe(0);
-				expect(incWeeklySpy.calls.length).toBe(0);
+				expect(incMonthlySpy).to.not.be.called();
+				expect(incWeeklySpy).to.not.be.called();
 			});
 		});
 
@@ -706,15 +699,15 @@ describe('DBServiceAWS', function() {
 				}),
 			];
 
-			const promiseSpy =  expect.createSpy()
+			const promiseSpy =  chai.spy()
 				.andReturn(Promise.reject(expectedError));
 
-			const updateSpy = expect.createSpy()
+			const updateSpy = chai.spy()
 				.andReturn({
 					promise: promiseSpy,
 				});
 
-			const apiCallSpy = expect.createSpy()
+			const apiCallSpy = chai.spy()
 				.andCall(function(msg, fields, fn) {
 					// Delay to assure handling async
 					return new Promise(function(resolve) {
@@ -761,10 +754,10 @@ describe('DBServiceAWS', function() {
 				};
 			};
 
-			const incMonthlySpy = expect.spyOn(service, '_incrementBackupResultMonthlyMetrics')
+			const incMonthlySpy = chai.spy.on(service, '_incrementBackupResultMonthlyMetrics')
 				.andReturn(Promise.reject('Expected not to be called'));
 
-			const incWeeklySpy = expect.spyOn(service, '_incrementBackupResultWeeklyMetrics')
+			const incWeeklySpy = chai.spy.on(service, '_incrementBackupResultWeeklyMetrics')
 				.andReturn(Promise.reject('Expected not to be called'));
 
 			const promise = service.incrementBackupResultMetrics(
@@ -772,7 +765,7 @@ describe('DBServiceAWS', function() {
 				[expectedMetrics]
 			);
 
-			expect(promise).toBeA(Promise);
+			expect(promise).to.be.instanceof(Promise);
 
 			return promise.then(function() {
 				throw new Error('Expected not to resolve');
@@ -781,37 +774,36 @@ describe('DBServiceAWS', function() {
 					throw err;
 				}
 
-				expect(apiCallSpy.calls.length).toBe(1);
-				expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-				expect(apiCallSpy.calls[0].arguments[0]).toBe('incrementBackupResultMetrics DynamoDB update');
-				expect(apiCallSpy.calls[0].arguments[1]).toBeA('object');
-				expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-					params: {
-						TableName: 'table-client-name',
-						Key: {
-							clientId: 'client-id',
+				expect(apiCallSpy).called.once
+					.with.callNum(1).args.to.be.lengthOf(3)
+					.with.arg(0).to.equal('incrementBackupResultMetrics DynamoDB update')
+					.with.arg(1).to.be.an('object')
+					.with.arg(1).to.deep.equal({
+						params: {
+							TableName: 'table-client-name',
+							Key: {
+								clientId: 'client-id',
+							},
+							ConditionExpression: 'attribute_exists(clientId)',
+							UpdateExpression: 'ADD backupCount :bc, totalBytes :tb, totalItems :ti, errorCount :ec',
+							ExpressionAttributeValues: {
+								':bc': 1,
+								':tb': 2,
+								':ti': 3,
+								':ec': 4,
+							},
+							ReturnValues: 'NONE',
 						},
-						ConditionExpression: 'attribute_exists(clientId)',
-						UpdateExpression: 'ADD backupCount :bc, totalBytes :tb, totalItems :ti, errorCount :ec',
-						ExpressionAttributeValues: {
-							':bc': 1,
-							':tb': 2,
-							':ti': 3,
-							':ec': 4,
-						},
-						ReturnValues: 'NONE',
-					},
-				});
+					});
 
-				expect(updateSpy.calls.length).toBe(1);
-				expect(updateSpy.calls[0].arguments).toBeArguments([
-					apiCallSpy.calls[0].arguments[1].params,
-				]);
+				expect(updateSpy).called.once
+					.with.callNum(1).args.to.be.lengthOf(1)
+					.with.arg(0).to.equal(apiCallSpy.getCall(0).args[1].params);
 
-				expect(promiseSpy.calls.length).toBe(1);
+				expect(promiseSpy).called(1);
 
-				expect(incMonthlySpy.calls.length).toBe(0);
-				expect(incWeeklySpy.calls.length).toBe(0);
+				expect(incMonthlySpy).to.not.be.called();
+				expect(incWeeklySpy).to.not.be.called();
 			});
 		});
 
@@ -866,7 +858,7 @@ describe('DBServiceAWS', function() {
 				};
 			};
 
-			const incMonthlySpy = expect.spyOn(service, '_incrementBackupResultMonthlyMetrics')
+			const incMonthlySpy = chai.spy.on(service, '_incrementBackupResultMonthlyMetrics')
 				.andCall(function() {
 					return new Promise(function(resolve) {
 						setTimeout(resolve, 1);
@@ -876,7 +868,7 @@ describe('DBServiceAWS', function() {
 						});
 				});
 
-			const incWeeklySpy = expect.spyOn(service, '_incrementBackupResultWeeklyMetrics')
+			const incWeeklySpy = chai.spy.on(service, '_incrementBackupResultWeeklyMetrics')
 				.andReturn(Promise.reject('Expected not to be called'));
 
 			return service.incrementBackupResultMetrics(
@@ -889,13 +881,12 @@ describe('DBServiceAWS', function() {
 					throw err;
 				}
 
-				expect(incMonthlySpy.calls.length).toBe(1);
-				expect(incMonthlySpy.calls[0].arguments).toBeArguments([
-					'client-id',
-					expectedYearMonth,
-				]);
+				expect(incMonthlySpy).called.once
+					.with.callNum(1).args.to.be.lengthOf(2)
+					.with.arg(0).to.equal('client-id')
+					.with.arg(1).to.equal(expectedYearMonth);
 
-				expect(incWeeklySpy.calls.length).toBe(0);
+				expect(incWeeklySpy).to.not.be.called();
 			});
 		});
 
@@ -955,7 +946,7 @@ describe('DBServiceAWS', function() {
 				return Promise.resolve();
 			};
 
-			const incWeeklySpy = expect.spyOn(service, '_incrementBackupResultWeeklyMetrics')
+			const incWeeklySpy = chai.spy.on(service, '_incrementBackupResultWeeklyMetrics')
 				.andThrow(expectedError);
 
 			return service.incrementBackupResultMetrics(
@@ -968,11 +959,10 @@ describe('DBServiceAWS', function() {
 					throw err;
 				}
 
-				expect(incWeeklySpy.calls.length).toBe(1);
-				expect(incWeeklySpy.calls[0].arguments).toBeArguments([
-					'client-id',
-					expectedByYearWeek,
-				]);
+				expect(incWeeklySpy).called.once
+					.with.callNum(1).args.to.be.lengthOf(2)
+					.with.arg(0).to.equal('client-id')
+					.with.arg(1).to.equal(expectedByYearWeek);
 			});
 		});
 	});
@@ -1029,15 +1019,15 @@ describe('DBServiceAWS', function() {
 						},
 					};
 
-					const promiseSpy = expect.createSpy()
+					const promiseSpy = chai.spy()
 						.andReturn(Promise.resolve());
 
-					const updateSpy = expect.createSpy()
+					const updateSpy = chai.spy()
 						.andReturn({
 							promise: promiseSpy,
 						});
 
-					const apiCallSpy = expect.createSpy()
+					const apiCallSpy = chai.spy()
 						.andCall(function(msg, fields, fn) {
 							// Delay to assure handling async
 							return new Promise(function(resolve) {
@@ -1078,74 +1068,72 @@ describe('DBServiceAWS', function() {
 						aggregatedData
 					);
 
-					expect(promise).toBeA(Promise);
+					expect(promise).to.be.instanceof(Promise);
 
 					return promise.then(function() {
-						expect(apiCallSpy.calls.length).toBe(2);
+						expect(apiCallSpy).called(2);
 
-						expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-						expect(apiCallSpy.calls[0].arguments[0]).toBe(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`);
-						expect(apiCallSpy.calls[0].arguments[1]).toBeA('object');
-						expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-							params: {
-								TableName: 'table-clientmetric-name',
-								Key: {
-									clientId: 'client-id',
-									metricId: `${opts.period}-2016`,
+						expect(apiCallSpy).callNum(1).args.to.be.lengthOf(3)
+							.with.arg(0).to.equal(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`)
+							.with.arg(1).to.be.an('object')
+							.with.arg(1).to.deep.equal({
+								params: {
+									TableName: 'table-clientmetric-name',
+									Key: {
+										clientId: 'client-id',
+										metricId: `${opts.period}-2016`,
+									},
+									UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2, #n3 :v3`,
+									ExpressionAttributeNames: {
+										'#n0': '1-count',
+										'#n1': '1-bytes',
+										'#n2': '1-items',
+										'#n3': '1-errors',
+									},
+									ExpressionAttributeValues: {
+										':v0': 1,
+										':v1': 2,
+										':v2': 3,
+										':v3': 4,
+									},
+									ReturnValues: 'NONE',
 								},
-								UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2, #n3 :v3`,
-								ExpressionAttributeNames: {
-									'#n0': '1-count',
-									'#n1': '1-bytes',
-									'#n2': '1-items',
-									'#n3': '1-errors',
-								},
-								ExpressionAttributeValues: {
-									':v0': 1,
-									':v1': 2,
-									':v2': 3,
-									':v3': 4,
-								},
-								ReturnValues: 'NONE',
-							},
-						});
+							});
 
-						expect(apiCallSpy.calls[1].arguments.length).toBe(3);
-						expect(apiCallSpy.calls[1].arguments[0]).toBe(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`);
-						expect(apiCallSpy.calls[1].arguments[1]).toBeA('object');
-						expect(apiCallSpy.calls[1].arguments[1]).toEqual({
-							params: {
-								TableName: 'table-clientmetric-name',
-								Key: {
-									clientId: 'client-id',
-									metricId: `${opts.period}-2017`,
+						expect(apiCallSpy).callNum(2).args.to.be.lengthOf(3)
+							.arg(0).to.equal(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`)
+							.arg(1).to.be.an('object')
+							.arg(1).to.deep.equal({
+								params: {
+									TableName: 'table-clientmetric-name',
+									Key: {
+										clientId: 'client-id',
+										metricId: `${opts.period}-2017`,
+									},
+									UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2, #n3 :v3`,
+									ExpressionAttributeNames: {
+										'#n0': '1-count',
+										'#n1': '1-bytes',
+										'#n2': '1-items',
+										'#n3': '1-errors',
+									},
+									ExpressionAttributeValues: {
+										':v0': 10,
+										':v1': 20,
+										':v2': 30,
+										':v3': 40,
+									},
+									ReturnValues: 'NONE',
 								},
-								UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2, #n3 :v3`,
-								ExpressionAttributeNames: {
-									'#n0': '1-count',
-									'#n1': '1-bytes',
-									'#n2': '1-items',
-									'#n3': '1-errors',
-								},
-								ExpressionAttributeValues: {
-									':v0': 10,
-									':v1': 20,
-									':v2': 30,
-									':v3': 40,
-								},
-								ReturnValues: 'NONE',
-							},
-						});
+							});
 
-						expect(updateSpy.calls.length).toBe(2);
-						expect(updateSpy.calls[0].arguments).toBeArguments([
-							apiCallSpy.calls[0].arguments[1].params,
-						]);
-						expect(updateSpy.calls[1].arguments).toBeArguments([
-							apiCallSpy.calls[1].arguments[1].params,
-						]);
+						expect(updateSpy).called(2)
+							.with.callNum(1).args.to.be.lengthOf(1)
+							.with.arg(0).to.equal(apiCallSpy.getCall(0).args[1].params)
+							.with.callNum(2).args.to.be.lengthOf(1)
+							.with.arg(0).to.equal(apiCallSpy.getCall(1).args[1].params);
 
-						expect(promiseSpy.calls.length).toBe(2);
+						expect(promiseSpy).called(2);
 					});
 				});
 
@@ -1170,7 +1158,7 @@ describe('DBServiceAWS', function() {
 						},
 					};
 
-					const apiCallSpy = expect.createSpy()
+					const apiCallSpy = chai.spy()
 						.andReturn(Promise.reject(expectedError));
 
 					const services = {
@@ -1201,7 +1189,7 @@ describe('DBServiceAWS', function() {
 						aggregatedData
 					);
 
-					expect(promise).toBeA(Promise);
+					expect(promise).to.be.instanceof(Promise);
 
 					return promise.then(function() {
 						throw new Error('Expected to not resolve');
@@ -1210,7 +1198,7 @@ describe('DBServiceAWS', function() {
 							throw err;
 						}
 
-						expect(apiCallSpy.calls.length).toBe(1);
+						expect(apiCallSpy).called(1);
 					});
 				});
 
@@ -1240,7 +1228,7 @@ describe('DBServiceAWS', function() {
 						},
 					};
 
-					const apiCallSpy = expect.createSpy()
+					const apiCallSpy = chai.spy()
 						.andReturn(Promise.resolve());
 
 					const services = {
@@ -1271,35 +1259,34 @@ describe('DBServiceAWS', function() {
 						aggregatedData
 					);
 
-					expect(promise).toBeA(Promise);
+					expect(promise).to.be.instanceof(Promise);
 
 					return promise.then(function() {
-						expect(apiCallSpy.calls.length).toBe(1);
-
-						expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-						expect(apiCallSpy.calls[0].arguments[0]).toBe(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`);
-						expect(apiCallSpy.calls[0].arguments[1]).toBeA('object');
-						expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-							params: {
-								TableName: 'table-clientmetric-name',
-								Key: {
-									clientId: 'client-id',
-									metricId: `${opts.period}-2017`,
+						expect(apiCallSpy).called.once
+							.with.callNum(1).args.to.be.lengthOf(3)
+							.with.arg(0).to.equal(`incrementBackupResultMetrics > ${opts.method} DynamoDB update`)
+							.with.arg(1).to.be.an('object')
+							.with.arg(1).to.deep.equal({
+								params: {
+									TableName: 'table-clientmetric-name',
+									Key: {
+										clientId: 'client-id',
+										metricId: `${opts.period}-2017`,
+									},
+									UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2`,
+									ExpressionAttributeNames: {
+										'#n0': '2-bytes',
+										'#n1': '2-items',
+										'#n2': '2-errors',
+									},
+									ExpressionAttributeValues: {
+										':v0': 200,
+										':v1': 300,
+										':v2': 400,
+									},
+									ReturnValues: 'NONE',
 								},
-								UpdateExpression: `ADD #n0 :v0, #n1 :v1, #n2 :v2`,
-								ExpressionAttributeNames: {
-									'#n0': '2-bytes',
-									'#n1': '2-items',
-									'#n2': '2-errors',
-								},
-								ExpressionAttributeValues: {
-									':v0': 200,
-									':v1': 300,
-									':v2': 400,
-								},
-								ReturnValues: 'NONE',
-							},
-						});
+							});
 					});
 				});
 			});
@@ -1309,15 +1296,15 @@ describe('DBServiceAWS', function() {
 function assertGetter(tableResourceId, tableName, method, args, key) {
 	it('should call DocumentClient#get through logger.logApiCall', function() {
 		const expectedError = new Error();
-		const promiseSpy = expect.createSpy()
+		const promiseSpy = chai.spy()
 			.andReturn(Promise.reject(expectedError));
 
-		const getSpy = expect.createSpy()
+		const getSpy = chai.spy()
 			.andReturn({
 				promise: promiseSpy,
 			});
 
-		const apiCallSpy = expect.createSpy()
+		const apiCallSpy = chai.spy()
 			.andCall(function(msg, fields, fn) {
 				return new Promise(function(resolve) {
 					resolve(fn());
@@ -1349,24 +1336,23 @@ function assertGetter(tableResourceId, tableName, method, args, key) {
 
 		const service = new DBServiceAWS(services);
 		const promise = service[method].apply(service, args, key);
-		expect(promise).toBeA(Promise);
+		expect(promise).to.be.instanceof(Promise);
 
-		expect(apiCallSpy.calls.length).toBe(1);
-		expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-		expect(apiCallSpy.calls[0].arguments[0]).toBe(`${method} DynamoDB get`);
-		expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-			params: {
-				TableName: tableName,
-				Key: key,
-			},
-		});
+		expect(apiCallSpy).called.once
+			.with.callNum(1).args.to.be.lengthOf(3)
+			.with.arg(0).to.equal(`${method} DynamoDB get`)
+			.with.arg(1).to.deep.equal({
+				params: {
+					TableName: tableName,
+					Key: key,
+				},
+			});
 
-		expect(getSpy.calls.length).toBe(1);
-		expect(getSpy.calls[0].arguments).toBeArguments([
-			apiCallSpy.calls[0].arguments[1].params,
-		]);
+		expect(getSpy).called.once
+			.with.callNum(1).args.to.be.lengthOf(1)
+			.with.arg(0).to.equal(apiCallSpy.getCall(0).args[1].params);
 
-		expect(promiseSpy.calls.length).toBe(1);
+		expect(promiseSpy).called(1);
 
 		return promise.then(function() {
 			throw new Error('Expected not to resolve');
@@ -1379,7 +1365,7 @@ function assertGetter(tableResourceId, tableName, method, args, key) {
 
 	it('should should return "Item" property of result', function() {
 		const expectedResult = {};
-		const apiCallSpy = expect.createSpy()
+		const apiCallSpy = chai.spy()
 			.andCall(function(msg, fields, fn) {
 				return new Promise(function(resolve) {
 					resolve(fn());
@@ -1419,20 +1405,20 @@ function assertGetter(tableResourceId, tableName, method, args, key) {
 
 		const service = new DBServiceAWS(services);
 		const promise = service[method].apply(service, args, key);
-		expect(promise).toBeA(Promise);
+		expect(promise).to.be.instanceof(Promise);
 
-		expect(apiCallSpy.calls.length).toBe(1);
-		expect(apiCallSpy.calls[0].arguments.length).toBe(3);
-		expect(apiCallSpy.calls[0].arguments[0]).toBe(`${method} DynamoDB get`);
-		expect(apiCallSpy.calls[0].arguments[1]).toEqual({
-			params: {
-				TableName: tableName,
-				Key: key,
-			},
-		});
+		expect(apiCallSpy).called.once
+			.with.callNum(1).args.to.be.lengthOf(3)
+			.with.arg(0).to.equal(`${method} DynamoDB get`)
+			.with.arg(1).to.deep.equal({
+				params: {
+					TableName: tableName,
+					Key: key,
+				},
+			});
 
 		return promise.then(function(result) {
-			expect(result).toBe(expectedResult);
+			expect(result).to.equal(expectedResult);
 		});
 	});
 }
